@@ -1,0 +1,16 @@
+name: PR Title Check
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions: {}
+
+jobs:
+  pr-title:
+    name: PR Title
+    permissions:
+      pull-requests: read
+    # `$/` (self-repository) syntax is preferred, but actionlint v1.7.12
+    # rejects it; switch once actionlint supports it.
+    uses: ./.github/workflows/pr-title.yml # zizmor: ignore[self-repository]
