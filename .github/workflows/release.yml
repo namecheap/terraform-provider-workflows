@@ -1,0 +1,142 @@
+name: Release
+
+# Builds, signs and publishes a Terraform provider release with GoReleaser.
+# Called from each provider's release.yml on a pushed v* tag; see README.md.
+#
+# No `permissions:` here on purpose: a called workflow can only narrow what
+# its caller grants, and a job that asks for more than the caller allows fails
+# at startup. The caller grants contents: write, plus id-token: write and
+# attestations: write when `attest` is on.
+on:
+  workflow_call:
+    inputs:
+      attest:
+        description: Attest build provenance for every file listed in SHA256SUMS.
+        type: boolean
+        default: true
+      sbom:
+        description: Generate a CycloneDX SBOM with Trivy and attach it to the release.
+        type: boolean
+        default: false
+      dry-run:
+        description: Build and sign a snapshot without publishing anything.
+        type: boolean
+        default: false
+      working-directory:
+        description: Directory containing go.mod and .goreleaser.yml.
+        type: string
+        default: "."
+    secrets:
+      gpg-private-key:
+        description: ASCII-armored private key that signs SHA256SUMS.
+        required: true
+      passphrase:
+        description: Passphrase for gpg-private-key.
+        required: true
+
+jobs:
+  goreleaser:
+    name: GoReleaser
+    runs-on: ubuntu-latest
+    steps:
+      # fetch-depth: 0 gives GoReleaser the tags it needs to find the previous
+      # release. persist-credentials: false keeps the token out of .git/config;
+      # GoReleaser never pushes and reads GITHUB_TOKEN from env.
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # cache: false: the signing build must not restore a Go cache written by
+      # other jobs that run unpinned tools. Modules are downloaded fresh and
+      # checked against go.sum below.
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: ${{ inputs.working-directory }}/go.mod
+          cache: false
+
+      # Fail instead of rewriting go.mod/go.sum, then check the downloaded
+      # modules against go.sum, before anything is built or signed.
+      - name: Verify Go modules
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          go mod tidy -diff
+          go mod verify
+
+      - name: Import GPG key
+        id: import_gpg
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
+        with:
+          gpg_private_key: ${{ secrets.gpg-private-key }}
+          passphrase: ${{ secrets.passphrase }}
+
+      # The GoReleaser binary is pinned so the signing build is reproducible.
+      # Dependabot bumps the action SHA but not `version:`; bump it by hand
+      # after reading https://github.com/goreleaser/goreleaser/releases.
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
+        with:
+          version: v2.19.0
+          workdir: ${{ inputs.working-directory }}
+          args: ${{ inputs.dry-run && 'release --clean --snapshot --skip=publish' || 'release --clean' }}
+        env:
+          GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Find checksums file
+        id: checksums
+        if: inputs.attest && !inputs.dry-run
+        env:
+          WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        run: |
+          path=$(ls "$WORKING_DIRECTORY"/dist/*_SHA256SUMS)
+          echo "path=$path" >> "$GITHUB_OUTPUT"
+
+      - name: Attest build provenance
+        if: inputs.attest && !inputs.dry-run
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-checksums: ${{ steps.checksums.outputs.path }}
+
+      # <repo>_<tag>_sbom.cdx.json; "snapshot" replaces the tag in a dry-run,
+      # where the ref name (e.g. "12/merge") is not a valid file name.
+      - name: Name SBOM file
+        id: sbom
+        if: inputs.sbom
+        env:
+          WORKING_DIRECTORY: ${{ inputs.working-directory }}
+          REPOSITORY_NAME: ${{ github.event.repository.name }}
+          DRY_RUN: ${{ inputs.dry-run }}
+        run: |
+          if [ "$DRY_RUN" = true ]; then label=snapshot; else label="$GITHUB_REF_NAME"; fi
+          echo "path=$WORKING_DIRECTORY/dist/${REPOSITORY_NAME}_${label}_sbom.cdx.json" >> "$GITHUB_OUTPUT"
+
+      # cache: false keeps this job free of restored caches, as above.
+      - name: Generate CycloneDX SBOM
+        if: inputs.sbom
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.71.2
+          cache: false
+          scan-type: fs
+          scan-ref: ${{ inputs.working-directory }}
+          format: cyclonedx
+          output: ${{ steps.sbom.outputs.path }}
+
+      - name: Attach SBOM to release
+        if: inputs.sbom && !inputs.dry-run
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SBOM_PATH: ${{ steps.sbom.outputs.path }}
+        run: gh release upload "$GITHUB_REF_NAME" "$SBOM_PATH" --clobber
+
+      - name: Upload dry-run output
+        if: inputs.dry-run
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dist
+          path: ${{ inputs.working-directory }}/dist
+          if-no-files-found: error
+          retention-days: 1
