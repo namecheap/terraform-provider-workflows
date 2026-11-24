@@ -1,0 +1,15 @@
+version: 2
+updates:
+  # Callers run these workflows, so an action bump here is a published change:
+  # `fix` makes release-please cut a release that callers can pin.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "fix"
+      include: "scope"
+    groups:
+      actions:
+        patterns:
+          - "*"
