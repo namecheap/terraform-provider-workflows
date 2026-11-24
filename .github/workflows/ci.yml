@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: testdata/provider/go.mod
+          cache: false
+
+      - name: actionlint
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+
+      - name: zizmor
+        uses: zizmorcore/zizmor-action@1b4550e929643b8b26a62303c6bd64814271a4f1 # v0.9.2
+        with:
+          version: 1.32.0
+          advanced-security: false
+
+  # Runs the reusable release workflow end to end against the fixture
+  # provider, signing with a throwaway key. Fork PRs get no secrets, so the
+  # dry-run only runs for branches in this repository.
+  dry-run:
+    name: Release dry-run
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      contents: read
+    # `$/` (self-repository) syntax is preferred, but actionlint v1.7.12
+    # rejects it; switch once actionlint supports it.
+    uses: ./.github/workflows/release.yml # zizmor: ignore[self-repository]
+    with:
+      dry-run: true
+      attest: false
+      sbom: true
+      working-directory: testdata/provider
+    secrets:
+      gpg-private-key: ${{ secrets.TEST_GPG_PRIVATE_KEY }}
+      passphrase: ${{ secrets.TEST_GPG_PASSPHRASE }}
+
+  verify-dry-run:
+    name: Verify dry-run
+    needs: dry-run
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download dry-run output
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist
+
+      - name: Check artifacts and signature
+        run: |
+          set -euo pipefail
+          ls -l dist
+          sums=$(ls dist/terraform-provider-fixture_*_SHA256SUMS)
+          ls dist/terraform-provider-fixture_*_linux_amd64.zip
+          ls dist/terraform-provider-fixture_*_darwin_arm64.zip
+          # The Registry needs the manifest's checksum in SHA256SUMS.
+          grep -q '_manifest.json$' "$sums"
+          test -s dist/terraform-provider-workflows_snapshot_sbom.cdx.json
+          gpg --batch --import testdata/gpg/test-public.asc
+          gpg --batch --verify "$sums.sig" "$sums"
+          (cd dist && sha256sum --check --strict --ignore-missing "$(basename "$sums")")
+
+  ci-ok:
+    name: CI OK
+    if: always()
+    needs:
+      - lint
+      - dry-run
+      - verify-dry-run
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Fail if a required job failed or was cancelled
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "results: $RESULTS"
+          case " $RESULTS " in
+            *" failure "*|*" cancelled "*) exit 1 ;;
+          esac
