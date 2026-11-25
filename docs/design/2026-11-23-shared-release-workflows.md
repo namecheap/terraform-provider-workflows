@@ -345,6 +345,12 @@ provider keeps its own change-detection and `CI OK` aggregation.
 | `trivy` | bool | `true` | Trivy filesystem scan: vulnerabilities + license denylist. |
 | `trivy-config` | string | `trivy.yaml` | Per-repo config (license denylist stays in the provider). |
 | `govulncheck` | bool | `true` | Go vulnerability check. |
+| `report` | bool | `false` | Non-gating reporting: all-severity Trivy and govulncheck JSON, a CI SBOM artifact, and one summary (with open CodeQL alerts) in the job summary and a sticky PR comment. Namecheap sets it to `true`. |
+
+- `report` moves namecheap's `security-report` job and
+  `scripts/security-summary.sh` here. It needs `pull-requests: write` and
+  `security-events: read` from the caller, and skips the PR comment where the
+  token is read-only (fork and Dependabot PRs).
 
 - Trivy's action and binary versions are pinned here once and shared with the
   release SBOM step, so the CI scan and the SBOM can't drift.
