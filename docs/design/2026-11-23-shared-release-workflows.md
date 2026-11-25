@@ -251,7 +251,9 @@ On every PR and push to `main`:
 - Dry-run: call `./.github/workflows/release.yml` with `dry-run: true`,
   `working-directory: testdata/provider`, `sbom: true`, signing with a
   throwaway GPG key stored as this repo's secret (no trust value; never a
-  provider key).
+  provider key). The key is set in both the Actions and the Dependabot
+  secret stores: runs Dependabot triggers read only the Dependabot store, and
+  action bumps are the PRs this dry-run matters for most.
 
 ### Versioning of this repo
 
