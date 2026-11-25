@@ -33,6 +33,13 @@ jobs:
       - name: actionlint
         run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
 
+      # The release SBOM and the CI scan must use the same Trivy.
+      - name: One Trivy version
+        run: |
+          versions=$(grep -ho 'version: v0\.[0-9.]*' .github/workflows/release.yml .github/workflows/security-scan.yml | sort -u)
+          echo "$versions"
+          [ "$(printf '%s\n' "$versions" | wc -l)" -eq 1 ]
+
       - name: zizmor
         uses: zizmorcore/zizmor-action@1b4550e929643b8b26a62303c6bd64814271a4f1 # v0.9.2
         with:
@@ -92,6 +99,46 @@ jobs:
           gpg --batch --verify "$sums.sig" "$sums"
           (cd dist && sha256sum --check --strict --ignore-missing "$(basename "$sums")")
 
+  # Runs the reusable security scan against the fixture provider, with the
+  # report on, so the summary script and the sticky PR comment are exercised.
+  security-scan:
+    name: Security scan
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      contents: read
+      pull-requests: write
+      security-events: read
+    uses: ./.github/workflows/security-scan.yml # zizmor: ignore[self-repository]
+    with:
+      working-directory: testdata/provider
+      report: true
+
+  verify-security-scan:
+    name: Verify security scan
+    needs: security-scan
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Download summary
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: security-summary
+
+      # The summary script must come from this repository at the commit under
+      # test, never from main or the caller's ref.
+      - name: Check the summary and where its script came from
+        env:
+          SOURCE: ${{ needs.security-scan.outputs.summary-source }}
+          EXPECTED_SOURCE: ${{ github.repository }}@${{ github.sha }}
+        run: |
+          set -euo pipefail
+          cat security-summary.md
+          [ "$(head -1 security-summary.md)" = '<!-- security-scan-summary -->' ]
+          grep -q 'Trivy — vulnerabilities\*\* (SCA) | ✅' security-summary.md
+          grep -q 'govulncheck\*\* (reachability) | ✅' security-summary.md
+          echo "summary script: $SOURCE (expected $EXPECTED_SOURCE)"
+          [ "$SOURCE" = "$EXPECTED_SOURCE" ]
+
   ci-ok:
     name: CI OK
     if: always()
@@ -99,6 +146,8 @@ jobs:
       - lint
       - dry-run
       - verify-dry-run
+      - security-scan
+      - verify-security-scan
     runs-on: ubuntu-latest
     permissions: {}
     steps:

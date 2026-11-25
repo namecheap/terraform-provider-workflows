@@ -1,0 +1,7 @@
+# actionlint v1.7.12 does not know the job.workflow_* properties GitHub added
+# in September 2026. Remove these once actionlint supports them.
+paths:
+  .github/workflows/security-scan.yml:
+    ignore:
+      - 'property "workflow_sha" is not defined'
+      - 'property "workflow_repository" is not defined'
