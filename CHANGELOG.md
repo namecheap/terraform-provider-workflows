@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/namecheap/terraform-provider-workflows/compare/v1.0.1...v1.1.0) (2026-11-25)
+
+
+### Features
+
+* add reusable security scan workflow ([#9](https://github.com/namecheap/terraform-provider-workflows/issues/9)) ([50317a3](https://github.com/namecheap/terraform-provider-workflows/commit/50317a33e4f611d248f464f42dc931e48c17c1a5))
+
 ## [1.0.1](https://github.com/namecheap/terraform-provider-workflows/compare/v1.0.0...v1.0.1) (2026-11-25)
 
 
