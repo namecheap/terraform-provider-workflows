@@ -11,9 +11,11 @@ Reusable GitHub Actions workflows shared by Namecheap's Terraform providers:
 | [`release.yml`](.github/workflows/release.yml) | Builds, GPG-signs and publishes a provider release with GoReleaser; attests build provenance; optionally attaches a CycloneDX SBOM |
 | [`versioning.yml`](.github/workflows/versioning.yml) | Runs release-please with a GitHub App token to open the Release PR and cut the tag |
 | [`pr-title.yml`](.github/workflows/pr-title.yml) | Requires Conventional Commit PR titles |
+| [`security-scan.yml`](.github/workflows/security-scan.yml) | Trivy and govulncheck gates; optionally a summary as a sticky PR comment |
 
 Each provider keeps a short caller workflow with its own triggers and secrets.
-CI and tests stay in each provider.
+Tests stay in each provider; `security-scan.yml` runs as one job of the
+provider's CI.
 
 ## Pinning
 
@@ -124,6 +126,38 @@ jobs:
 The check reports as `PR Title / Conventional PR Title`. Allowed types:
 `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `ci`, `perf`, `build`,
 `revert`.
+
+## `security-scan.yml`
+
+Called as one job of the provider's CI, behind its own change gate:
+
+```yaml
+  security:
+    name: Security
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    permissions:
+      contents: read
+      pull-requests: write   # only with report: true
+      security-events: read  # only with report: true
+    uses: namecheap/terraform-provider-workflows/.github/workflows/security-scan.yml@<sha> # vX.Y.Z
+    with:
+      report: true
+```
+
+Checks report as `Security / Security scan (Trivy)`,
+`Security / Security scan (govulncheck)` and, with `report`,
+`Security / Security scan summary`.
+
+| Input | Type | Default | Description |
+|---|---|---|---|
+| `trivy` | boolean | `true` | Fail on fixable CRITICAL/HIGH vulnerabilities, misconfigurations, committed secrets and forbidden licenses. |
+| `trivy-config` | string | `trivy.yaml` | Trivy config (license denylist), relative to `working-directory`. |
+| `govulncheck` | boolean | `true` | Fail on Go vulnerabilities reachable from the module's code, using the Go version in `go.mod`. |
+| `report` | boolean | `false` | Non-gating summary: all-severity results, a CycloneDX SBOM artifact and open CodeQL alerts, in the job summary and a sticky comment on same-repository PRs. |
+| `working-directory` | string | `.` | Directory containing `go.mod`. |
+
+The Trivy version here and in `release.yml` is the same; CI checks it.
 
 ## Contributing
 

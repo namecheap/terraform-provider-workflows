@@ -342,15 +342,22 @@ provider keeps its own change-detection and `CI OK` aggregation.
 
 | Input | Type | Default | Purpose |
 |---|---|---|---|
-| `trivy` | bool | `true` | Trivy filesystem scan: vulnerabilities + license denylist. |
+| `trivy` | bool | `true` | Trivy filesystem scan: vulnerabilities, misconfigurations, secrets and the license denylist. |
 | `trivy-config` | string | `trivy.yaml` | Per-repo config (license denylist stays in the provider). |
-| `govulncheck` | bool | `true` | Go vulnerability check. |
-| `report` | bool | `false` | Non-gating reporting: all-severity Trivy and govulncheck JSON, a CI SBOM artifact, and one summary (with open CodeQL alerts) in the job summary and a sticky PR comment. Namecheap sets it to `true`. |
+| `govulncheck` | bool | `true` | Go vulnerability check (reachable code only). |
+| `report` | bool | `false` | Non-gating reporting: all-severity Trivy and govulncheck JSON, a CI SBOM artifact, and one summary (with open CodeQL alerts) in the job summary and a sticky PR comment. Spaceship and namecheap set it to `true`. |
+| `working-directory` | string | `.` | Directory containing `go.mod`; lets this repo's CI scan `testdata/provider`, as `release.yml` does. |
 
-- `report` moves namecheap's `security-report` job and
-  `scripts/security-summary.sh` here. It needs `pull-requests: write` and
-  `security-events: read` from the caller, and skips the PR comment where the
-  token is read-only (fork and Dependabot PRs).
+- `report` moves spaceship's and namecheap's `security-report` job and
+  `scripts/security-summary.sh` here (spaceship's version, which sanitizes
+  scan values before they go into Markdown). It needs `pull-requests: write`
+  and `security-events: read` from the caller, and skips the PR comment where
+  the token is read-only (fork and Dependabot PRs). The report job checks the
+  script out at `job.workflow_sha`, the commit the caller pinned.
+- govulncheck runs with the Go version from `go.mod` (its `toolchain` line
+  when present), the version releases build with, so standard-library
+  advisories match what ships. A standard-library CVE fails the scan until
+  `toolchain` is bumped.
 
 - Trivy's action and binary versions are pinned here once and shared with the
   release SBOM step, so the CI scan and the SBOM can't drift.
@@ -361,8 +368,8 @@ provider keeps its own change-detection and `CI OK` aggregation.
   `Security scan (govulncheck)` are renamed at its cutover.
 - Same migration order: spaceship → jenkins → namecheap.
 - CodeQL is not part of this workflow; it runs as default setup (step 0).
-- Optionally upload Trivy results as SARIF so they appear in the Security
-  tab next to CodeQL.
+- No SARIF upload for now; the summary already shows open CodeQL alerts next
+  to the scans.
 
 ## Left to the builder
 
