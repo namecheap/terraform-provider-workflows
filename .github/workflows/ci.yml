@@ -41,7 +41,8 @@ jobs:
 
   # Runs the reusable release workflow end to end against the fixture
   # provider, signing with a throwaway key. Fork PRs get no secrets, so the
-  # dry-run only runs for branches in this repository.
+  # dry-run only runs for branches in this repository. Dependabot runs read
+  # only Dependabot secrets, so TEST_GPG_* is set in both secret stores.
   dry-run:
     name: Release dry-run
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
