@@ -118,6 +118,10 @@ community defaults).
   openssl base64`) → `gh secret set --env release` → dispatch
   `self-versioning.yml` and confirm green → delete the old key and the local
   PEM. On suspected leak, delete the old key first.
+- Current App and key: `tf-provider-workflows-release`, key in
+  `RELEASE_APP_PRIVATE_KEY` since 2026-11-25, fingerprint
+  `SHA256:h4R702cT3y0QTHww3tn//QfCC7dOj+MTUY5A51XC06A=`. Update this line on
+  every rotation.
 
 Layout:
 

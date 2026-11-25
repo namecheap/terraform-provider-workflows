@@ -1,0 +1,52 @@
+name: Versioning
+
+# release-please for this repository. Standalone rather than a call to
+# versioning.yml: the App credentials live in the `release` environment, which
+# only `main` can use, and a job that calls a reusable workflow cannot set
+# `environment:`.
+on:
+  # Safe use of workflow_run: nothing is checked out, GITHUB_TOKEN has no
+  # permissions, and the job's `if:` only accepts successful CI runs from
+  # this repository, never from a fork.
+  workflow_run: # zizmor: ignore[dangerous-triggers]
+    workflows: ["CI"]
+    types:
+      - completed
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  release-please:
+    name: Release Please
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    environment: release
+    permissions: {}
+    steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
+        # Narrow the token to what release-please needs, whatever else the
+        # App installation is allowed to do.
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          permission-contents: write
+          permission-pull-requests: write
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
+      - name: Release Please
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          config-file: .release-please-config.json
+          manifest-file: .release-please-manifest.json
+          token: ${{ steps.app-token.outputs.token }}
