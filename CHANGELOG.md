@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/namecheap/terraform-provider-workflows/compare/v1.0.0...v1.0.1) (2026-11-25)
+
+
+### Bug Fixes
+
+* **deps:** Bump actions/setup-go from 7.0.0 to 7.1.0 in the actions group across 1 directory ([#3](https://github.com/namecheap/terraform-provider-workflows/issues/3)) ([1989689](https://github.com/namecheap/terraform-provider-workflows/commit/1989689ade988e9e48753f19b82d4114bdd1e534))
+
 ## 1.0.0 (2026-11-25)
 
 
