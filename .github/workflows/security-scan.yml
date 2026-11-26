@@ -44,6 +44,18 @@ jobs:
         with:
           persist-credentials: false
 
+      # Trivy reads Go module licenses from the module cache. Without the
+      # download every license is unknown and the license denylist never fires.
+      - name: Set up Go
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: ${{ inputs.working-directory }}/go.mod
+          cache: false
+
+      - name: Download Go modules
+        working-directory: ${{ inputs.working-directory }}
+        run: go mod download
+
       # Dependabot bumps the action, not `version:`; bump it by hand, together
       # with the release SBOM's in release.yml.
       - name: Trivy vuln + misconfig + secret + license scan

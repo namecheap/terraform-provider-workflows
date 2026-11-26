@@ -2,7 +2,11 @@
 // release workflow's dry-run builds, packages and signs.
 package main
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/google/uuid"
+)
 
 var (
 	version = "dev"
@@ -10,5 +14,6 @@ var (
 )
 
 func main() {
-	fmt.Println(version, commit)
+	// A real dependency gives the security scan a license to detect.
+	fmt.Println(version, commit, uuid.Nil)
 }

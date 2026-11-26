@@ -119,10 +119,19 @@ jobs:
     runs-on: ubuntu-latest
     permissions: {}
     steps:
-      - name: Download summary
+      - name: Download summary and scan reports
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: security-summary
+          pattern: "{security-summary,trivy-json,sbom-cyclonedx}"
+          merge-multiple: true
+
+      # The license denylist only works if Trivy sees licenses at all; the
+      # fixture's one dependency (google/uuid) is BSD-3-Clause.
+      - name: Check that Trivy detected the dependency's license
+        run: |
+          set -euo pipefail
+          jq -e '[.Results[]?.Packages[]? | select(.Name == "github.com/google/uuid") | .Licenses[]?] | index("BSD-3-Clause")' trivy-results.json
+          jq -e '[.components[] | select(.name == "github.com/google/uuid") | .licenses[]?.license | (.id // .name)] | index("BSD-3-Clause")' sbom.cdx.json
 
       # The summary script must come from this repository at the commit under
       # test, never from main or the caller's ref.
