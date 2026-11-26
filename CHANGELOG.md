@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/namecheap/terraform-provider-workflows/compare/v1.1.0...v1.1.1) (2026-11-26)
+
+
+### Bug Fixes
+
+* download Go modules before the Trivy scan ([#13](https://github.com/namecheap/terraform-provider-workflows/issues/13)) ([bc3a4dc](https://github.com/namecheap/terraform-provider-workflows/commit/bc3a4dc5515e5ff45f559f50f8c0f78c555210b5))
+
 ## [1.1.0](https://github.com/namecheap/terraform-provider-workflows/compare/v1.0.1...v1.1.0) (2026-11-25)
 
 
