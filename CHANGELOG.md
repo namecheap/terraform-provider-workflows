@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/namecheap/terraform-provider-workflows/compare/v1.1.1...v1.1.2) (2026-11-26)
+
+
+### Bug Fixes
+
+* narrow the scan jobs to contents: read ([#16](https://github.com/namecheap/terraform-provider-workflows/issues/16)) ([4ed9a7b](https://github.com/namecheap/terraform-provider-workflows/commit/4ed9a7bdb83ec3b048bae3774c09125340a16ebc))
+
 ## [1.1.1](https://github.com/namecheap/terraform-provider-workflows/compare/v1.1.0...v1.1.1) (2026-11-26)
 
 
