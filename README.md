@@ -165,9 +165,10 @@ Use Conventional Commits. A change to any reusable workflow, including an
 action bump, must be `fix:` or `feat:` so that it is released; `ci:`, `docs:`
 and `chore:` do not cut a release.
 
-Every pull request runs the release workflow in dry-run mode against the
-fixture in `testdata/provider`, signed with a throwaway key, and checks the
-signature.
+Every push to `main` and every pull request from a branch in this repository
+runs the release workflow in dry-run mode against the fixture in
+`testdata/provider`, signed with a throwaway key, and checks the signature.
+Fork pull requests get no secrets and skip it.
 
 See [`docs/design`](docs/design) for the design.
 

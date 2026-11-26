@@ -3,8 +3,9 @@ name: Security scan
 # Trivy and govulncheck gates for a Terraform provider, plus an optional
 # non-gating summary. Called from each provider's CI; see README.md.
 #
-# No `permissions:` here: the caller grants contents: read, plus
-# pull-requests: write and security-events: read when `report` is on.
+# The caller grants contents: read, plus pull-requests: write and
+# security-events: read when `report` is on. The two scan jobs narrow to
+# contents: read; only the report job uses the rest.
 on:
   workflow_call:
     inputs:
@@ -38,6 +39,8 @@ jobs:
     name: Security scan (Trivy)
     if: inputs.trivy
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -118,6 +121,8 @@ jobs:
     name: Security scan (govulncheck)
     if: inputs.govulncheck
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
