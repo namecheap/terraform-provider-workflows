@@ -387,10 +387,14 @@ provider keeps its own change-detection and `CI OK` aggregation.
 ## Verified facts
 
 - Org Actions policy: all three providers report `allowed_actions: all`.
-- Required checks: only jenkins requires a moved check (`Conventional PR
-  Title`, classic branch protection). Spaceship's ruleset has no required
-  status checks; namecheap's (`Check`, the two security scans, snyk) are not
-  in the moved workflows.
+- Required checks at the time of writing: only jenkins required a moved
+  check (`Conventional PR Title`, classic branch protection). Spaceship's
+  ruleset had no required status checks; namecheap's (`Check`, the two
+  security scans, snyk) were not in the moved workflows.
+- Required checks after the rollout: spaceship `CI OK` and
+  `PR Title / Conventional PR Title`; namecheap `Check`, `CI OK`,
+  `PR Title / Conventional PR Title` and snyk; jenkins unchanged apart from
+  the renamed PR title check.
 
 ## Calls made during write-up (check these)
 

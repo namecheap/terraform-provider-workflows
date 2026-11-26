@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Render a consolidated security-scan summary (GitHub-flavored Markdown) from the
-# JSON outputs of the CI security jobs. Consumed by the `security-report` job in
-# .github/workflows/ci.yml: written to the run's job summary, uploaded as the
+# JSON outputs of the security scan jobs. Run by the `report` job in
+# .github/workflows/security-scan.yml: written to the run's job summary, uploaded as the
 # `security-summary` artifact, and posted as a sticky PR comment.
 #
 # Usage:
