@@ -54,7 +54,9 @@ workflows once, as reusable workflows. Each provider keeps a thin caller.
   `id-token: write` and `attestations: write` when attestation is on.
 - Jobs moved into a reusable workflow report as `<caller job name> / <callee
   job name>`. Required status checks that point at the old names must be
-  renamed at cutover.
+  renamed at cutover. A caller job skipped by `if:` reports only as
+  `<caller job name>`, so a moved check that a change gate can skip must not
+  be required; require an always-run aggregate job (`CI OK`) instead.
 - App credentials for release-please have different names per repo
   (`SPS_RELEASE_CLIENT_ID`/`SPS_RELEASE_PRIVATE_KEY` in spaceship,
   `APP_CLIENT_ID`/`APP_PRIVATE_KEY` in namecheap and jenkins). Default
@@ -365,7 +367,9 @@ provider keeps its own change-detection and `CI OK` aggregation.
   `trivy.yaml`. All three already run govulncheck (spaceship and namecheap
   as `Security scan (govulncheck)` in `ci.yml`, jenkins inside `test.yml`).
 - Namecheap's required checks `Security scan (Trivy)` and
-  `Security scan (govulncheck)` are renamed at its cutover.
+  `Security scan (govulncheck)` are replaced by `CI OK` at its cutover: the
+  change gate skips the `security` job on Release PRs, and a skipped caller
+  never reports the `Security / …` names.
 - Same migration order: spaceship → jenkins → namecheap.
 - CodeQL is not part of this workflow; it runs as default setup (step 0).
 - No SARIF upload for now; the summary already shows open CodeQL alerts next
